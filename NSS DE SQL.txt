@@ -1,0 +1,51 @@
+-- Crear la tabla CONSECUTIVOS si no existe
+CREATE TABLE IF NOT EXISTS CONSECUTIVOS (
+  CONSECUTIVO INT
+);
+
+-- Insertar el primer registro en la tabla CONSECUTIVOS
+INSERT INTO CONSECUTIVOS (CONSECUTIVO) VALUES (1000);
+
+-- Crear la función para generar el NSS
+DELIMITER //
+
+CREATE FUNCTION GENERAR_NSS(fecha_nacimiento DATE) RETURNS VARCHAR(15)
+BEGIN
+  DECLARE numero_oficina VARCHAR(2);
+  DECLARE numero_inscripcion VARCHAR(2);
+  DECLARE anio_nacimiento VARCHAR(2);
+  DECLARE numero_asignado VARCHAR(4);
+  DECLARE digito_verificador INT;
+  
+  -- Generar el número de oficina aleatorio (entre 0 y 100)
+  SET numero_oficina = LPAD(FLOOR(RAND() * 100), 2, '0');
+  
+  -- Calcular el rango de años para el número de inscripción
+  SET numero_inscripcion = LPAD(YEAR(fecha_nacimiento) + 15 + FLOOR(RAND() * (YEAR(CURDATE()) - (YEAR(fecha_nacimiento) + 15))), 2, '0');
+  
+  -- Obtener el año de nacimiento
+  SET anio_nacimiento = RIGHT(YEAR(fecha_nacimiento), 2);
+  
+  -- Obtener el último consecutivo de la tabla CONSECUTIVOS
+  SELECT CONSECUTIVO INTO numero_asignado FROM CONSECUTIVOS ORDER BY CONSECUTIVO DESC LIMIT 1;
+  
+  -- Calcular el siguiente consecutivo y actualizar la tabla CONSECUTIVOS
+  SET numero_asignado = numero_asignado + 1;
+  INSERT INTO CONSECUTIVOS (CONSECUTIVO) VALUES (numero_asignado);
+  
+  -- Calcular el dígito verificador
+  SET digito_verificador = (SUBSTRING(numero_oficina, 1, 1) + SUBSTRING(numero_oficina, 2, 1) +
+                            SUBSTRING(numero_inscripcion, 1, 1) + SUBSTRING(numero_inscripcion, 2, 1) +
+                            SUBSTRING(anio_nacimiento, 1, 1) + SUBSTRING(anio_nacimiento, 2, 1) +
+                            SUBSTRING(numero_asignado, 1, 1) + SUBSTRING(numero_asignado, 2, 1) +
+                            SUBSTRING(numero_asignado, 3, 1) + SUBSTRING(numero_asignado, 4, 1)) % 10;
+  
+  -- Construir el NSS completo
+  RETURN CONCAT(numero_oficina, '-', numero_inscripcion, '-', anio_nacimiento, '-', numero_asignado, '-', digito_verificador);
+END //
+
+DELIMITER ;
+
+
+shell 
+SELECT GENERAR_NSS('1990-01-01');
